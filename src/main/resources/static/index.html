@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银行交易管理系统</title>
+    <script src="./jquery.min.js"></script>
+</head>
+<body>
+    <h1>银行交易管理系统</h1>
+
+    <!-- 交易列表 -->
+    <h2>交易列表</h2>
+    <button id="refreshListBtn">刷新列表</button>
+    <div id="transactionList"></div>
+
+    <!-- 添加交易表单 -->
+    <h2>添加交易</h2>
+    <form id="addTransactionForm">
+        <div>
+            <label>Transaction ID:</label>
+            <input type="number" name="id" required>
+        </div>
+        <div>
+            <label>Transaction Type:</label>
+            <select name="type">
+                <option value="DEPOSIT">DEPOSIT</option>
+                <option value="WITHDRAWAL">WITHDRAWAL</option>
+                <option value="TRANSFER">TRANSFER</option>
+            </select>
+        </div>
+        <div>
+            <label>Amount:</label>
+            <input type="number" name="amount" step="0.01" required>
+        </div>
+        <div>
+            <label>Account ID:</label>
+            <input type="number" name="accountNumber" required>
+        </div>
+        <div>
+            <label>description:</label>
+            <input type="text" name="description" required>
+        </div>
+        <button type="submit">save</button>
+    </form>
+
+    <!-- 更新交易表单 -->
+    <h2>更新交易</h2>
+    <form id="updateTransactionForm">
+        <div>
+            <label>Transaction ID:</label>
+            <input type="number" name="id" required>
+        </div>
+        <div>
+            <label>Amount:</label>
+            <input type="number" name="amount" step="0.01">
+        </div>
+        <div>
+            <label>Account ID:</label>
+            <input type="number" name="accountNumber" required>
+        </div>
+        <div>
+            <label>description:</label>
+            <input type="text" name="description" required>
+        </div>
+        <button type="submit">更新</button>
+    </form>
+
+    <!-- 删除交易表单 -->
+    <h2>删除交易</h2>
+    <form id="deleteTransactionForm">
+        <div>
+            <label>交易ID:</label>
+            <input type="number" name="id" required>
+        </div>
+        <button type="submit">删除</button>
+    </form>
+
+    <!-- 消息提示 -->
+    <div id="message"></div>
+
+    <script>
+        // API 基础URL
+        const API_BASE_URL = 'http://localhost:8080/api/transactions';
+
+        // 页面加载完成后执行
+        $(document).ready(function() {
+            // 初始加载交易列表
+            loadTransactionList();
+
+            // 添加交易表单提交处理
+            $('#addTransactionForm').on('submit', function(e) {
+                e.preventDefault();
+                addTransaction();
+            });
+
+            // 更新交易表单提交处理
+            $('#updateTransactionForm').on('submit', function(e) {
+                e.preventDefault();
+                updateTransaction();
+            });
+
+            // 删除交易表单提交处理
+            $('#deleteTransactionForm').on('submit', function(e) {
+                e.preventDefault();
+                deleteTransaction();
+            });
+
+            // 刷新列表按钮点击处理
+            $('#refreshListBtn').on('click', function() {
+                loadTransactionList();
+            });
+        });
+
+        // 加载交易列表
+        function loadTransactionList() {
+            const transactionData = {
+                "pageNumber": 1,
+                "pageSize": 10
+            };
+            $.ajax({
+                url: `${API_BASE_URL}/page`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(transactionData),
+                success: function(response) {
+                    if (response.code == '200') {
+                        displayTransactions(response.data.list);
+                    } else {
+                        showMessage('加载交易列表失败', 'error');
+                    }
+                },
+                error: function(error) {
+                    showMessage('网络错误，请重试', 'error');
+                    console.error('Error loading transactions:', error);
+                }
+            });
+        }
+
+        // 显示交易列表
+        function displayTransactions(transactions) {
+            let html = '<table border="1"><tr><th>ID</th><th>类型</th><th>金额</th><th>账户ID</th><th>时间</th><th>描述</th></tr>';
+            
+            if (transactions && transactions.length > 0) {
+                transactions.forEach(transaction => {
+                    html += `<tr>
+                        <td>${transaction.id}</td>
+                        <td>${transaction.type}</td>
+                        <td>${transaction.amount}</td>
+                        <td>${transaction.accountNumber}</td>
+                        <td>${transaction.timestamp}</td>
+                        <td>${transaction.description}</td>
+                    </tr>`;
+                });
+            } else {
+                html += '<tr><td colspan="6">没有交易记录</td></tr>';
+            }
+            
+            html += '</table>';
+            $('#transactionList').html(html);
+        }
+
+        // 添加交易
+        function addTransaction() {
+            const formData = $('#addTransactionForm').serializeArray();
+            const transactionData = {};
+            
+            formData.forEach(item => {
+                transactionData[item.name] = item.value;
+            });
+            
+            $.ajax({
+                url: `${API_BASE_URL}/createTransaction`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(transactionData),
+                success: function(response) {
+                    if (response.code == '200') {
+                        showMessage('交易添加成功', 'success');
+                        $('#addTransactionForm')[0].reset();
+                        loadTransactionList();
+                    } else {
+                        alert(`添加失败: ${response.message}`);
+                    }
+                },
+                error: function(error) {
+                    showMessage('网络错误，请重试', 'error');
+                    console.error('Error adding transaction:', error);
+                }
+            });
+        }
+
+        // 更新交易
+        function updateTransaction() {
+            const formData = $('#updateTransactionForm').serializeArray();
+            const transactionData = {};
+            
+            formData.forEach(item => {
+                if (item.value !== '') {
+                    transactionData[item.name] = item.value;
+                }
+            });
+            
+            if (!transactionData.id) {
+                showMessage('请提供交易ID', 'error');
+                return;
+            }
+            
+            $.ajax({
+                url: `${API_BASE_URL}/updateTransaction`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(transactionData),
+                success: function(response) {
+                    if (response.code == '200') {
+                        showMessage('交易更新成功', 'success');
+                        $('#updateTransactionForm')[0].reset();
+                        loadTransactionList();
+                    } else {
+                        alert(`更新失败: ${response.message}`);
+                    }
+                },
+                error: function(error) {
+                    showMessage('网络错误，请重试', 'error');
+                    console.error('Error updating transaction:', error);
+                }
+            });
+        }
+
+        // 删除交易
+        function deleteTransaction() {
+            const transactionId = $('#deleteTransactionForm input[name="id"]').val();
+            
+            if (!transactionId) {
+                showMessage('请提供交易ID', 'error');
+                return;
+            }
+            
+            if (!confirm(`确定要删除交易ID为 ${transactionId} 的记录吗？`)) {
+                return;
+            }
+            
+            $.ajax({
+                url: `${API_BASE_URL}/deleteTransaction/${transactionId}`,
+                method: 'POST',
+                success: function(response) {
+                    if (response.code == '200') {
+                        showMessage('交易删除成功', 'success');
+                        $('#deleteTransactionForm')[0].reset();
+                        loadTransactionList();
+                    } else {
+                        alert(`删除失败: ${response.message}`);
+                    }
+                },
+                error: function(error) {
+                    showMessage('网络错误，请重试', 'error');
+                    console.error('Error deleting transaction:', error);
+                }
+            });
+        }
+
+        // 显示消息提示
+        function showMessage(message, type) {
+            const messageDiv = $('#message');
+            messageDiv.text(message);
+            
+            if (type === 'success') {
+                messageDiv.css('color', 'green');
+            } else if (type === 'error') {
+                messageDiv.css('color', 'red');
+            }
+            
+            messageDiv.show();
+            
+            // 3秒后自动隐藏消息
+            setTimeout(() => {
+                messageDiv.fadeOut();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+    
