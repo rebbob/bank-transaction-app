@@ -84,7 +84,7 @@ public class TransactionRepository {
         page.setPageNumber(pageNum);
         page.setPageSize(pageSize);
         page.setList(list);
-        page.setTotalCount(list.size());
+        page.setTotalCount(dataList.size());
         return page;
     }
 }
