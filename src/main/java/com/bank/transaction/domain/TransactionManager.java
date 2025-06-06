@@ -35,11 +35,12 @@ public class TransactionManager {
         if (!lock) {
             throw new BizException(ERROR_REPEAT_CREATE_TRANS);
         }
-        Transaction db = transactionRepository.findById(dto.getId());
-        if (db != null) {
-            throw new BizException(ERROR_REPEAT_CREATE_TRANS);
-        }
         try {
+            Transaction db = transactionRepository.findById(dto.getId());
+            if (db != null) {
+                throw new BizException(ERROR_REPEAT_CREATE_TRANS);
+            }
+        
             Transaction trans = new Transaction();
             BeanUtils.copyProperties(dto, trans);
             trans.setTimestamp(new Date());
@@ -79,12 +80,12 @@ public class TransactionManager {
         if (!lock) {
             throw new BizException(ERROR_REPEAT_MODIFY_TRANS);
         }
-
-        Transaction transaction = transactionRepository.findById(dto.getId());
-        if (transaction == null) {
-            throw new BizException(ERROR_TRANS_NOT_FOUND);
-        }
         try {
+            Transaction transaction = transactionRepository.findById(dto.getId());
+            if (transaction == null) {
+                throw new BizException(ERROR_TRANS_NOT_FOUND);
+            }
+        
             if (dto.getAmount() != null) {
                 transaction.setAmount(dto.getAmount());
             }
@@ -107,12 +108,11 @@ public class TransactionManager {
         if (!lock) {
             throw new BizException(ERROR_REPEAT_DEL_TRANS);
         }
-        Transaction transaction = transactionRepository.findById(id);
-        if (transaction == null) {
-            throw new BizException(ERROR_TRANS_NOT_FOUND);
-        }
-
         try {
+            Transaction transaction = transactionRepository.findById(id);
+            if (transaction == null) {
+                throw new BizException(ERROR_TRANS_NOT_FOUND);
+            }
             transactionRepository.deleteById(id);
             TransPageCacheUtils.remove(transaction.getAccountNumber());
         } finally {
